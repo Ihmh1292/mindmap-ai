@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>مولّد الخرائط الذهنية — Mindmap AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;600;700;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+/* =============================================
+   UPLOAD PANEL — shown before mindmap
+   ============================================= */
+#upload-panel {
+  position:fixed; inset:0; z-index:2000;
+  background:#FAFAF8;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:24px; padding:32px;
+  font-family:'Cairo',sans-serif;
+}
+#upload-panel.hidden { display:none; }
+
+.up-logo {
+  width:56px; height:56px; background:#1a2e4a;
+  border-radius:14px; display:flex; align-items:center;
+  justify-content:center; font-size:28px;
+}
+.up-title {
+  font-size:1.2rem; font-weight:900; color:#1a2e4a;
+  text-align:center;
+}
+.up-sub {
+  font-size:0.78rem; color:#888; text-align:center;
+  font-family:'Cairo',sans-serif;
+}
+.upload-zone {
+  width:100%; max-width:520px;
+  border:2px dashed #c0ccd8; border-radius:12px;
+  padding:40px 28px; text-align:center;
+  cursor:pointer; transition:border-color 0.2s, background 0.2s;
+  background:white;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color:#2d5a8a; background:#f0f6ff;
+}
+.upload-zone .up-icon { font-size:2.8rem; display:block; margin-bottom:10px; }
+.upload-zone h2 { font-size:1rem; color:#1a2e4a; margin-bottom:6px; font-family:'Cairo',sans-serif; }
+.upload-zone p { font-size:0.78rem; color:#999; font-family:'Cairo',sans-serif; }
+#fileInput { display:none; }
+
+.btn-upload {
+  background:#1a2e4a; color:white; border:none;
+  padding:10px 28px; border-radius:8px;
+  font-size:0.88rem; cursor:pointer;
+  font-family:'Cairo',sans-serif;
+  margin-top:14px;
+  transition:background 0.2s;
+}
+.btn-upload:hover { background:#2d4a6a; }
+
+.file-chip {
+  display:flex; align-items:center; gap:10px;
+  background:#e8f0fa; border:1px solid #a8cce8;
+  border-radius:8px; padding:10px 16px;
+  max-width:520px; width:100%;
+  font-family:'Cairo',sans-serif;
+}
+.file-chip .fc-name { font-size:0.88rem; font-weight:700; color:#1a3550; flex:1; }
+.file-chip .fc-size { font-size:0.72rem; color:#666; }
+.file-chip .fc-rm {
+  background:none; border:none; color:#999;
+  cursor:pointer; font-size:1rem; padding:2px 6px;
+}
+.file-chip .fc-rm:hover { color:#c44; }
+
+.btn-generate {
+  background:#2d7a3a; color:white; border:none;
+  padding:13px 40px; border-radius:8px;
+  font-size:1rem; font-weight:700; cursor:pointer;
+  font-family:'Cairo',sans-serif;
+  transition:background 0.2s, transform 0.1s;
+  letter-spacing:0.02em;
+}
+.btn-generate:hover:not(:disabled) { background:#1a5c2a; transform:translateY(-1px); }
+.btn-generate:disabled { background:#aaa; cursor:not-allowed; }
+
+/* Progress */
+.progress-wrap {
+  width:100%; max-width:520px;
+  font-family:'Cairo',sans-serif;
+}
+.prog-label {
+  display:flex; justify-content:space-between;
+  font-size:0.8rem; color:#2d5a8a; margin-bottom:6px;
+}
+.prog-bar-bg {
+  background:#dde8f0; border-radius:99px; height:6px; overflow:hidden;
+}
+.prog-bar-fill {
+  background:#2d5a8a; height:100%; border-radius:99px;
+  width:0%; transition:width 0.4s ease;
+}
+.prog-step {
+  margin-top:8px; font-size:0.72rem; color:#999;
+}
+
+/* Error */
+.err-box {
+  background:#fff0f0; border:1px solid #c44;
+  border-radius:8px; padding:12px 16px;
+  color:#8b1a1a; font-size:0.82rem;
+  max-width:520px; width:100%;
+  font-family:'Cairo',sans-serif;
+}
+.hidden { display:none !important; }
+
+/* =============================================
+   MINDMAP PANEL — v8 styles
+   ============================================= */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:14px;}
+body{background:#FAFAF8;font-family:'Cairo',sans-serif;overflow:hidden;
+     width:100vw;height:100vh;direction:ltr;user-select:none;}
+
+/* =============================================
+   TOOLBAR
+   ============================================= */
+#hdr{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  background:rgba(255,255,255,0.97);backdrop-filter:blur(6px);
+  border-bottom:2px solid #2d5a8a;padding:0.45rem 1.2rem;
+  display:flex;align-items:center;justify-content:space-between;direction:rtl;
+  gap:8px;flex-wrap:wrap;
+}
+#hdr h1{font-size:0.85rem;font-weight:900;color:#1a2e4a;}
+#hdr p{font-size:0.62rem;color:#aaa;}
+.hdr-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.hint{font-size:0.6rem;color:#bbb;background:#f5f5f5;border:1px solid #eee;
+      padding:0.18rem 0.65rem;border-radius:20px;}
+.tbtn{font-size:0.68rem;color:#555;background:#f0f0f0;border:1px solid #ddd;
+      padding:0.2rem 0.65rem;border-radius:20px;cursor:pointer;
+      font-family:'Cairo',sans-serif;transition:background 0.15s;white-space:nowrap;}
+.tbtn:hover{background:#e0e0e0;}
+.tbtn.active{background:#e8f0fa;border-color:#a8cce8;color:#1a3550;}
+
+/* LEGEND */
+.legend{display:flex;align-items:center;gap:6px;padding:0.18rem 0.65rem;
+        border-radius:20px;background:#f8f8f8;border:1px solid #eee;}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:0.6rem;color:#666;}
+.leg-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+.leg-matan  {background:#1a3a5c;}
+.leg-syarah {background:#1a5c2a;}
+.leg-hasyiah{background:#7a4a00;}
+.leg-fn     {background:#5c1a1a;border:1px dashed #c44;}
+
+/* =============================================
+   CANVAS
+   ============================================= */
+#wrap{position:fixed;top:52px;left:0;right:0;bottom:0;overflow:scroll;cursor:grab;}
+#wrap.panning{cursor:grabbing;}
+#canvas{position:relative;width:6200px;height:4400px;
+        display:flex;align-items:center;justify-content:center;}
+#svg{position:absolute;top:0;left:0;width:100%;height:100%;
+     pointer-events:none;z-index:0;}
+
+/* =============================================
+   MINDMAP CONTAINER
+   ============================================= */
+#mm{position:relative;z-index:1;display:flex;align-items:center;flex-direction:row;}
+.bcol{display:flex;flex-direction:column;gap:14px;}
+#cr{align-items:flex-start;}
+#cl{align-items:flex-end;}
+.cgap{width:28px;flex-shrink:0;}
+
+/* =============================================
+   ROOT NODE
+   ============================================= */
+#cn{
+  background:#1a2e4a;color:#fff;border-radius:14px;
+  padding:0.9rem 1rem;text-align:center;max-width:148px;
+  box-shadow:0 6px 28px rgba(26,46,74,0.35);z-index:10;
+  flex-shrink:0;direction:rtl;border:2px solid #2d5a8a;
+}
+#cn .ic{font-size:1.35rem;display:block;margin-bottom:0.25rem;}
+#cn .tt{font-size:0.78rem;font-weight:900;line-height:1.4;}
+#cn .sb{font-size:0.58rem;color:rgba(255,255,255,0.55);margin-top:0.2rem;line-height:1.4;}
+
+/* =============================================
+   RTL FLEXBOX ENGINE — JANGAN UBAH
+   ============================================= */
+.nr{display:flex;align-items:center;}
+.nr.R{flex-direction:row-reverse;}
+.nr.L{flex-direction:row;}
+.nr.R > .chc{align-items:flex-end;}
+.nr.L > .chc{align-items:flex-start;}
+.nr.R .nr.R > .chc{align-items:flex-end;}
+.nr.L .nr.L > .chc{align-items:flex-start;}
+.chc{display:flex;flex-direction:column;gap:8px;}
+.chc.hidden{display:none;}
+
+/* =============================================
+   NODE BOX — BASE
+   ============================================= */
+.nb {
+  position:relative; border-radius:7px; padding:0.32rem 0.65rem;
+  cursor:pointer; transition:filter 0.15s,transform 0.1s,box-shadow 0.15s;
+  z-index:2; display:flex; align-items:center; gap:0.28rem;
+  font-family: 'Amiri', 'Cairo', serif;
+  font-size: 1.05rem;
+  font-weight: bold;
+  line-height: 1.5;
+  border: 1px solid #c0c0c0;
+  max-width:300px; white-space:normal; direction:rtl; text-align:right;
+}
+
+.nb:hover {
+  filter:brightness(1.06);transform:translateY(-1px);
+  box-shadow:0 3px 10px rgba(0,0,0,0.12);
+}
+
+.nb.lf {
+  cursor:default; 
+  font-weight: normal; /* Buang bold, jadikan teks biasa */
+}
+
+.nb.lf:hover {
+  filter:none;transform:none;box-shadow:none;
+}
+
+.nb .arr {font-size:0.48rem;opacity:0.5;transition:transform 0.22s;flex-shrink:0;}
+.nr.R.collapsed > .nb .arr {transform:rotate(180deg);}
+.nr.L.collapsed > .nb .arr {transform:rotate(-180deg);}
+
+/* =============================================
+   SOURCE TYPE SYSTEM
+   Setiap nod ada "type" field dalam JSON:
+   "matan" | "syarah" | "hasyiah" | "footnote" | "" (default)
+   ============================================= */
+
+/* --- MATAN: Biru gelap — teks asal pengarang --- */
+.t-matan.nb{
+  background:#1a3a5c;color:#e8f2ff;
+  border-color:#2d5a8a;font-weight:900;
+}
+.t-matan.nb.lf{background:#d0e4f7;color:#0a1e35;border-color:#7aaad0;}
+.t-matan.nb:not(.lf):hover{background:#1e4470;}
+
+/* Depth variations untuk matan */
+.t-matan.d2{background:#1e4470;color:#e8f2ff;border-color:#3a6a9a;}
+.t-matan.d2.lf{background:#ddeeff;color:#0a1e35;border-color:#8abae0;}
+.t-matan.d3,.t-matan.d4{background:#d8ecff;color:#0a1e35;border-color:#90c0e8;}
+.t-matan.d3.lf,.t-matan.d4.lf{background:#eef6ff;color:#0a1e35;border-color:#b0d4f0;}
+
+/* --- SYARAH: Hijau — penjelasan ulama --- */
+.t-syarah.nb{
+  background:#1a5c2a;color:#e8ffe8;
+  border-color:#2a8a40;font-weight:700;
+}
+.t-syarah.nb.lf{background:#cceedd;color:#0a2e15;border-color:#70c090;}
+.t-syarah.nb:not(.lf):hover{background:#1e6830;}
+
+.t-syarah.d2{background:#1e6830;color:#e8ffe8;border-color:#389050;}
+.t-syarah.d2.lf{background:#d8f5e0;color:#0a2e15;border-color:#80cc98;}
+.t-syarah.d3,.t-syarah.d4{background:#d0f0d8;color:#0a2e15;border-color:#88c8a0;}
+.t-syarah.d3.lf,.t-syarah.d4.lf{background:#ecfaf0;color:#0a2e15;border-color:#a8d8b8;}
+
+/* --- HASYIAH: Amber/coklat keemasan — nota tepi --- */
+.t-hasyiah.nb{
+  background:#7a4a00;color:#fff8e8;
+  border-color:#b87828;font-weight:700;font-style:italic;
+}
+.t-hasyiah.nb.lf{background:#fce5b8;color:#3a2000;border-color:#d8a840;}
+.t-hasyiah.nb:not(.lf):hover{background:#8a5800;}
+
+.t-hasyiah.d2{background:#8a5800;color:#fff8e8;border-color:#c88830;}
+.t-hasyiah.d2.lf{background:#fdeece;color:#3a2000;border-color:#e0b850;}
+.t-hasyiah.d3,.t-hasyiah.d4{background:#fce0a0;color:#3a2000;border-color:#d8b060;}
+.t-hasyiah.d3.lf,.t-hasyiah.d4.lf{background:#fff5d8;color:#3a2000;border-color:#e8c870;}
+
+/* --- FOOTNOTE: Merah gelap + dashed border --- */
+.t-footnote.nb{
+  background:#5c1a1a;color:#ffe8e8;
+  border:1.5px dashed #c44444;font-size:0.72rem;font-weight:600;
+}
+.t-footnote.nb.lf{background:#fce0e0;color:#3a0808;border:1px dashed #c09090;}
+.t-footnote.nb:not(.lf):hover{background:#6a2020;}
+
+.t-footnote.d2{background:#6a2020;color:#ffe8e8;border:1.5px dashed #d45050;}
+.t-footnote.d2.lf{background:#fdeaea;color:#3a0808;border:1px dashed #c8a0a0;}
+.t-footnote.d3,.t-footnote.d4{background:#f8d8d8;color:#3a0808;border:1px dashed #d0a0a0;}
+
+/* TYPE BADGE — label kecil atas nod */
+.type-badge{
+  display:inline-block;font-size:0.52rem;font-weight:700;
+  padding:1px 5px;border-radius:3px;margin-left:4px;
+  vertical-align:middle;letter-spacing:0.03em;opacity:0.85;
+  font-family:'Cairo',sans-serif;font-style:normal;
+}
+.badge-matan  {background:#0a1e35;color:#a8d0f8;}
+.badge-syarah {background:#0a2010;color:#90d8a8;}
+.badge-hasyiah{background:#3a2000;color:#f0c060;}
+.badge-footnote{background:#3a0808;color:#f0a0a0;}
+
+/* =============================================
+   BRANCH COLOUR SYSTEM
+   8 branches × 5 depths
+   depth-1 = gelap + teks PUTIH
+   depth-2 to 5 = pastel/cerah + teks HITAM
+   Exact colours dari reference file
+   ============================================= */
+.b1-1{background:#4878a0;color:#fff;}
+.b1-2{background:#d8eaf7;color:#1a3550;border-color:#a8cce8;}
+.b1-3{background:#ebf4fc;color:#1a3550;border-color:#bcd8f0;}
+.b1-4{background:#f4f9ff;color:#1a3550;border-color:#cfe4f5;}
+.b1-5{background:#f9fcff;color:#1a3550;border-color:#daeafa;}
+.b2-1{background:#2d7a3a;color:#fff;}
+.b2-2{background:#c8e8d0;color:#0a2e12;border-color:#88c898;}
+.b2-3{background:#e0f5e5;color:#0a2e12;border-color:#a8ddb0;}
+.b2-4{background:#edfaf0;color:#0a2e12;border-color:#c0e8c8;}
+.b2-5{background:#f5fdf6;color:#0a2e12;border-color:#d8f0dc;}
+.b3-1{background:#b87828;color:#fff;}
+.b3-2{background:#fce5c0;color:#4a2c08;border-color:#e8c080;}
+.b3-3{background:#fef3e0;color:#4a2c08;border-color:#f0d4a0;}
+.b3-4{background:#fffbf0;color:#4a2c08;border-color:#f8e8c0;}
+.b3-5{background:#fffef8;color:#4a2c08;border-color:#faf0d8;}
+.b4-1{background:#986060;color:#fff;}
+.b4-2{background:#f5d0d0;color:#3d1515;border-color:#e0a8a8;}
+.b4-3{background:#fce8e8;color:#3d1515;border-color:#e8c0c0;}
+.b4-4{background:#fff4f4;color:#3d1515;border-color:#f0d5d5;}
+.b4-5{background:#fffafa;color:#3d1515;border-color:#f8e5e5;}
+.b5-1{background:#685898;color:#fff;}
+.b5-2{background:#e0d0f5;color:#28154a;border-color:#c0a8e8;}
+.b5-3{background:#f0e8fb;color:#28154a;border-color:#d0b8f0;}
+.b5-4{background:#f8f3ff;color:#28154a;border-color:#e0d0f5;}
+.b5-5{background:#fdf9ff;color:#28154a;border-color:#ece0fa;}
+.b6-1{background:#287878;color:#fff;}
+.b6-2{background:#c0e8e8;color:#083030;border-color:#88cccc;}
+.b6-3{background:#e0f5f5;color:#083030;border-color:#a8dcdc;}
+.b6-4{background:#f0fbfb;color:#083030;border-color:#c0e8e8;}
+.b6-5{background:#f8fefe;color:#083030;border-color:#d0efef;}
+.b7-1{background:#607830;color:#fff;}
+.b7-2{background:#dde8b8;color:#283010;border-color:#b8cc88;}
+.b7-3{background:#eef5d8;color:#283010;border-color:#ccdda0;}
+.b7-4{background:#f7fae8;color:#283010;border-color:#ddeab8;}
+.b7-5{background:#fbfdf3;color:#283010;border-color:#e8f0cc;}
+.b8-1{background:#905038;color:#fff;}
+.b8-2{background:#f0d8c8;color:#381508;border-color:#d8a888;}
+.b8-3{background:#faeee5;color:#381508;border-color:#e8c0a8;}
+.b8-4{background:#fef8f3;color:#381508;border-color:#f0d8c8;}
+.b8-5{background:#fffcfa;color:#381508;border-color:#f8e8d8;}
+.nb.lf{border-width:1px;}
+
+/* =============================================
+   FILTER TOOLBAR — highlight by type
+   ============================================= */
+.nb.dimmed{opacity:0.18;filter:grayscale(0.5);}
+.nb.highlighted{box-shadow:0 0 0 2px #fff,0 0 0 4px currentColor;}
+
+/* =============================================
+   BULLET POINTS — nod daun dengan "bullets":[]
+   ============================================= */
+.nb.has-bullets{
+  flex-direction:column;align-items:flex-end;
+  white-space:normal;max-width:340px;min-width:160px;
+  cursor:default;gap:0;
+}
+.nb.has-bullets:hover{filter:none;transform:none;box-shadow:none;}
+.nb.has-bullets .nb-title {
+  font-weight: bold;
+  font-size: 1.05rem;
+  width:100%; text-align:right;
+  display:flex; align-items:center; gap:0.28rem;
+  justify-content:flex-end;
+}
+.nb.has-bullets .arr{display:none;}
+.nb ul.blist{
+  margin:4px 0 0 0;padding:4px 0 0 0;
+  list-style:none;width:100%;
+  border-top:1px solid rgba(128,128,128,0.2);
+}
+.nb ul.blist li {
+  position:relative; text-align:right; direction:rtl;
+  font-size: 1.0rem;
+  font-family: 'Amiri', 'Cairo', serif;
+  font-weight: normal;
+  line-height: 1.65;
+  padding-right:14px; margin-bottom:1px;
+  opacity: 0.92;
+}
+.nb ul.blist li::before{
+  content:'•';position:absolute;right:2px;top:1px;
+  font-size:0.65rem;opacity:0.55;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     UPLOAD PANEL
+══════════════════════════════════════════ -->
+<div id="upload-panel">
+  <div class="up-logo">🗺️</div>
+  <div>
+    <div class="up-title">مولّد الخرائط الذهنية</div>
+    <div class="up-sub">Islamic Studies Mindmap Generator · PDF → خريطة ذهنية</div>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <span class="up-icon">📄</span>
+    <h2>ارفع ملف PDF هنا</h2>
+    <p>Fiqh · Aqidah · Hadith · Usul · Tafsir · Nahw · Mantiq</p>
+    <p style="margin-top:4px;font-size:0.7rem;color:#bbb;">Supports Arabic OCR PDFs · Max ~20MB</p>
+    <input type="file" id="fileInput" accept=".pdf">
+    <button class="btn-upload" onclick="document.getElementById('fileInput').click()">اختر ملفاً</button>
+  </div>
+
+  <div class="file-chip hidden" id="fileChip">
+    <span>📑</span>
+    <div style="flex:1">
+      <div class="fc-name" id="fcName">—</div>
+      <div class="fc-size" id="fcSize">—</div>
+    </div>
+    <button class="fc-rm" onclick="clearFile()" title="Remove">✕</button>
+  </div>
+
+  <button class="btn-generate hidden" id="generateBtn" onclick="generateMindmap()">
+    ✦ توليد الخريطة الذهنية
+  </button>
+
+  <div class="progress-wrap hidden" id="progressWrap">
+    <div class="prog-label">
+      <span id="progText">جارٍ القراءة…</span>
+      <span id="progPct">0%</span>
+    </div>
+    <div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill"></div></div>
+    <div class="prog-step" id="progStep"></div>
+  </div>
+
+  <div class="err-box hidden" id="errBox"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MINDMAP PANEL (v8 renderer)
+══════════════════════════════════════════ -->
+<div id="hdr" style="display:none;">
+  <div>
+    <h1 id="hdr-title">خريطة ذهنية</h1>
+    <p id="hdr-sub"></p>
+  </div>
+  <div class="hdr-right">
+    <button class="tbtn" id="btn-new" onclick="resetToUpload()">↩ جديد</button>
+    <button class="tbtn" id="btn-expand">فتح الكل ▿</button>
+    <button class="tbtn" id="btn-collapse">طي الكل ▵</button>
+    <div style="width:1px;height:16px;background:#ddd;margin:0 2px;"></div>
+    <button class="tbtn" id="f-all"      onclick="filterType('all')">الكل</button>
+    <button class="tbtn" id="f-matan"    onclick="filterType('matan')">المتن</button>
+    <button class="tbtn" id="f-syarah"   onclick="filterType('syarah')">الشرح</button>
+    <button class="tbtn" id="f-hasyiah"  onclick="filterType('hasyiah')">الحاشية</button>
+    <button class="tbtn" id="f-footnote" onclick="filterType('footnote')">الحواشي↓</button>
+    <div style="width:1px;height:16px;background:#ddd;margin:0 2px;"></div>
+    <button class="tbtn" id="f-takrif"       onclick="filterType('takrif')" title="تعريف">🔑</button>
+    <button class="tbtn" id="f-dalil"        onclick="filterType('dalil')"  title="دليل">📜</button>
+    <button class="tbtn" id="f-hukum"        onclick="filterType('hukum')"  title="حكم">⚖️</button>
+    <button class="tbtn" id="f-syarat"       onclick="filterType('syarat')" title="شرط">✅</button>
+    <button class="tbtn" id="f-khilaf"       onclick="filterType('khilaf')" title="خلاف">⚔️</button>
+    <button class="tbtn" id="f-pengecualian" onclick="filterType('pengecualian')" title="استثناء">🚫</button>
+    <div style="width:1px;height:16px;background:#ddd;margin:0 2px;"></div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot leg-matan"></div>متن</div>
+      <div class="leg-item"><div class="leg-dot leg-syarah"></div>شرح</div>
+      <div class="leg-item"><div class="leg-dot leg-hasyiah"></div>حاشية</div>
+      <div class="leg-item"><div class="leg-dot leg-fn"></div>حاشية↓</div>
+    </div>
+    <span class="hint">💡 انقر نود للطي · اسحب للتحريك</span>
+  </div>
+</div>
+
+<div id="wrap" style="display:none;">
+  <div id="canvas">
+    <svg id="svg"><defs id="defs"></defs></svg>
+    <div id="mm">
+      <div class="bcol" id="cr"></div>
+      <div class="cgap"></div>
+      <div id="cn">
+        <span class="ic" id="root-icon">📖</span>
+        <div class="tt" id="root-label">...</div>
+        <div class="sb" id="root-sub">...</div>
+      </div>
+      <div class="cgap"></div>
+      <div class="bcol" id="cl"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+//  MINDMAP AI — UNIFIED APP v1.0
+//  Upload PDF → Extract JSON → Render Mindmap
+//  API calls via /api/generate (Vercel serverless proxy)
+// ================================================================
+
+// ── State ──
+let currentFile = null;
+let kitabData   = null;
+
+// ── Extraction System Prompt (v5.0) ──
+const SYSTEM_PROMPT = `# PROMPT PENGEKSTRAKAN JSON — Mindmap System v5.0
+# UNIFIED SCHEMA EDITION
+# Gantikan sepenuhnya v1.0–v4.0
+
+---
+
+## PERSONA
+
+Anda bertindak sebagai seorang Sarjana Ulama Islam Mutafannin yang menguasai khazanah ilmu turath secara mendalam, merangkumi Fiqh, Aqidah, Hadith, Usul Fiqh, Tafsir, serta sains bahasa Arab (Nahu, Sorof, Balaghah). Pada masa yang sama, anda juga merupakan seorang Jurutera Data Kanan yang pakar dalam Pemprosesan Dokumen Arab, kejuruteraan struktur data, dan pendidikan digital.
+
+---
+
+## ARAHAN UTAMA
+
+1. Baca keseluruhan dokumen sebelum mula
+2. Jika ada Fihris (الفهرس) → rujuk Fihris dahulu sebagai kerangka utama
+3. Jika tiada Fihris → kenal pasti heading dari teks (باب، فصل، مسألة، فائدة dll)
+4. Lakukan pemetaan BARIS DEMI BARIS
+5. Setiap ayat penegas, huraian, dan rujukan MESTI ada perwakilan nod
+6. Sebelum tamat: semak kendiri — adakah ada teks yang tertinggal?
+7. Output HANYA JSON — tiada teks lain, tiada penjelasan
+8. ⛔ DILARANG membuat HTML, CSS, atau JavaScript
+9. ⛔ DILARANG menggunakan backtick json — output raw JSON terus
+
+---
+
+## SKOP PENGEKSTRAKAN
+
+- Nama kitab       : _______________
+- Nama pengarang   : _______________
+- Bahagian/Bab     : _______________ (kosongkan jika nak semua)
+- Halaman          : _______________ hingga _______________
+
+---
+
+## BAHAGIAN YANG WAJIB DIABAIKAN
+
+Skip terus:
+- Muqaddimah kitab (المقدمة) — semua jenis
+- Kata pengantar penerbit / editor
+- Biodata pengarang (ترجمة المؤلف)
+- Bibliografi dan senarai rujukan
+- Kolofon (خاتمة الكتاب yang sekadar doa penutup)
+
+---
+
+## SKEMA JSON WAJIB
+
+Output mestilah dalam format ini SAHAJA:
+
+{
+  "id": "root",
+  "label": "عنوان الكتاب أو الباب",
+  "sub": "اسم المؤلف · المذهب",
+  "icon": "📖",
+  "meta": {
+    "kitab": "nama kitab penuh",
+    "author": "nama pengarang",
+    "mazhab": "syafii | hanafi | maliki | hanbali | am",
+    "discipline": "fiqh | aqidah | hadith | usul | tafsir | nahw | mantiq | tasawwuf | balagha | sirah",
+    "version": "1.0",
+    "created": "YYYY-MM-DD"
+  },
+  "children": [
+    {
+      "id": "b1",
+      "side": "R",
+      "theme": "b1",
+      "label": "١. عنوان الفرع الأول",
+      "icon": "📌",
+      "source": "matan",
+      "type": "tajuk",
+      "color": "#1a3a5c",
+      "children": []
+    }
+  ]
+}
+
+---
+
+## SISTEM DUA DIMENSI — KRITIKAL
+
+Schema ini menggunakan DUA field yang BERBEZA fungsi:
+
+### Dimensi 1: "source" — SIAPA YANG MENULIS
+Tentukan warna utama nod.
+
+| "source"    | Maksud                          | Warna Parent | Warna Leaf  |
+|-------------|----------------------------------|--------------|-------------|
+| "matan"     | Teks asal pengarang              | #1a3a5c      | #d0e4f7     |
+| "syarah"    | Huraian/penjelasan ulama         | #1a5c2a      | #cceedd     |
+| "hasyiah"   | Nota tepi ulama lain             | #7a4a00      | #fce5b8     |
+| "footnote"  | Nota kaki editor/muhaqiq         | #5c1a1a      | #fce0e0     |
+
+PERATURAN WARNA:
+- Nod yang ada children → guna warna GELAP (kolum "Warna Parent")
+- Nod leaf (children:[]) → guna warna CERAH (kolum "Warna Leaf")
+- Setiap nod WAJIB ada "source" — warisi dari induk jika tidak dinyatakan
+
+### Dimensi 2: "type" — APA FUNGSI TEKS
+Tentukan icon + badge kecil pada nod.
+
+| "type"              | Maksud                    | Icon | Badge      |
+|---------------------|---------------------------|------|------------|
+| "tajuk"             | Tajuk/heading utama       | 📌   | —          |
+| "takrif"            | Definisi umum             | 🔑   | تعريف      |
+| "takrif_lughawi"    | Definisi bahasa           | 🔑   | لغة        |
+| "takrif_istilahi"   | Definisi istilah          | 🔑   | اصطلاح     |
+| "takrif_syari"      | Definisi syarak           | 🔑   | شرعاً      |
+| "hukum"             | Hukum hakam               | ⚖️   | حكم        |
+| "dalil"             | Dalil umum                | 📜   | دليل       |
+| "dalil_quran"       | Dalil al-Quran            | 📜   | قرآن       |
+| "dalil_hadith"      | Dalil hadith              | 📜   | حديث       |
+| "dalil_ijmak"       | Dalil ijmak               | 📜   | إجماع      |
+| "dalil_qiyas"       | Dalil qiyas               | 📜   | قياس       |
+| "syarat"            | Syarat-syarat             | ✅   | شرط        |
+| "rukun"             | Rukun-rukun               | ✅   | ركن        |
+| "pengecualian"      | Pengecualian/istithna'    | 🚫   | استثناء    |
+| "khilaf"            | Container perbezaan pendapat | ⚔️ | خلاف      |
+| "khilaf_qawl"       | Satu pendapat dalam khilaf| ⚔️   | قول        |
+| "huraian"           | Huraian/penjelasan        | 💬   | —          |
+| "misal"             | Contoh                    | 💡   | مثال       |
+| "qaidah"            | Kaedah fiqhiyyah          | 📐   | قاعدة      |
+| "tanbih"            | Peringatan/tanbih         | ⚠️   | تنبيه      |
+| "faedah"            | Faedah/hikmah             | ✨   | فائدة      |
+| "footnote"          | Nota kaki (content type)  | 🔻   | —          |
+
+⛔ DILARANG menggunakan "source" sebagai pengganti "type" atau sebaliknya.
+
+---
+
+## PERATURAN KETAT AM
+
+- DILARANG menghilangkan mana-mana fakta
+- WAJIB mencerakinkan perenggan panjang kepada poin hierarki
+- DILARANG buang nama kitab, nama ulama, hadith, atau contoh
+- Hadith WAJIB disertakan sumber (nama kitab hadith)
+- Nama ulama yang dinukil WAJIB dikekalkan
+
+---
+
+## PERATURAN PENSTRUKTURAN TAKRIF
+
+Apabila ada definisi, struktur WAJIB:
+
+{
+  "label": "التعريف:",
+  "source": "[ikut layer teks]",
+  "type": "takrif",
+  "children": [
+    {
+      "label": "التعريف لغةً:",
+      "source": "[ikut layer teks]",
+      "type": "takrif_lughawi",
+      "children": [...]
+    },
+    {
+      "label": "التعريف اصطلاحاً:",
+      "source": "[ikut layer teks]",
+      "type": "takrif_istilahi",
+      "children": [...]
+    }
+  ]
+}
+
+Jika ada kategori tambahan seperti شرعاً / عند الفقهاء / عند الأصوليين → tambah sebagai sub-nod di bawah "takrif".
+
+---
+
+## PERATURAN KHILAF ULAMA (KRITIKAL — BARU)
+
+Apabila teks mengandungi perbezaan pendapat ulama:
+
+{
+  "label": "الخلاف في [tajuk masalah]:",
+  "source": "syarah",
+  "type": "khilaf",
+  "color": "#1a5c2a",
+  "children": [
+    {
+      "label": "مذهب الشافعية:",
+      "source": "syarah",
+      "type": "khilaf_qawl",
+      "color": "#1e6830",
+      "children": [
+        { "label": "القول/الحكم المختار", "source": "syarah", "type": "hukum", "color": "#cceedd", "children": [] },
+        { "label": "الدليل المعتمد", "source": "syarah", "type": "dalil", "color": "#cceedd", "children": [] }
+      ]
+    },
+    {
+      "label": "مذهب الحنفية:",
+      "source": "syarah",
+      "type": "khilaf_qawl",
+      "color": "#1e6830",
+      "children": [
+        { "label": "القول/الحكم المختار", "source": "syarah", "type": "hukum", "color": "#cceedd", "children": [] },
+        { "label": "الدليل المعتمد", "source": "syarah", "type": "dalil", "color": "#cceedd", "children": [] }
+      ]
+    },
+    {
+      "label": "الراجح عند المؤلف:",
+      "source": "syarah",
+      "type": "hukum",
+      "color": "#d8f5e0",
+      "children": [
+        { "label": "القول المختار وسببه", "source": "syarah", "type": "huraian", "color": "#ecfaf0", "children": [] }
+      ]
+    }
+  ]
+}
+
+PERATURAN KHILAF:
+- Nod "khilaf" WAJIB ada "الراجح" sebagai anak terakhir jika pengarang nyatakan pendapat
+- Setiap mazhab WAJIB ada dalil mereka sendiri jika teks menyebutnya
+- Khilaf antara Asy'ariyyah dan Maturidiyyah guna label "مذهب الأشاعرة:" / "مذهب الماتريدية:"
+- Khilaf qawl jadid vs qadim guna label "القول الجديد:" / "القول القديم:"
+
+---
+
+## PERATURAN NOTA KAKI (FOOTNOTE)
+
+- WAJIB ekstrak SEMUA nota kaki substantif
+- Letakkan sebagai sub-nod kepada nod yang paling berkaitan
+- "source": "footnote" DAN "type": "footnote" (kedua-dua wajib sama untuk nota kaki editor)
+- Jika nota kaki datang dari hasyiah ulama: "source": "hasyiah", "type": "tanbih"
+- Label diawali "حاشية: " atau "تنبيه: "
+
+---
+
+## PERATURAN KEDALAMAN — FLEXIBLE DEPTH
+
+Tiada had kedalaman. Pecah cabang selagi maklumat memerlukan.
+
+Ujian wajib sebelum jadikan leaf node:
+> "Adakah kandungan nod ini mengandungi 2 atau lebih perkara yang berbeza?"
+- YA → WAJIB pecah kepada sub-nod
+- TIDAK → boleh jadikan leaf
+
+Situasi yang WAJIB dipecah:
+- Lelaki vs perempuan berbeza hukum
+- Dalam solat / luar solat / safar / mukim
+- Syarat berbeza jenis
+- Pendapat ulama berbeza (→ guna struktur khilaf)
+- Taqsim kepada beberapa bahagian
+- Lebih dari satu contoh / lebih dari satu dalil
+
+---
+
+## PERATURAN HIERARKI MATAN & SYARAH
+
+Fakta Utama (Matan/Asas) → Nod Induk (Parent)
+Huraian Sampingan (Syarah/Tafsil/Mithal/Istithna') → Sub-nod (Children)
+
+DILARANG KERAS meletakkan teks asas dan teks huraian pada aras hierarki yang sama.
+
+---
+
+## PERATURAN CONTEXTUAL LABELLING
+
+Label MESTI describe FUNGSI SEBENAR teks, bukan label generik.
+
+✅ BETUL:
+- "شروط صحة الصلاة الخمسة:"
+- "الفرق بين الحدث الأكبر والأصغر:"
+- "مذهب الحنفية في هذه المسألة:"
+- "دليل من السنة النبوية:"
+- "استثناء من القاعدة العامة:"
+
+❌ SALAH:
+- "التعريف:"  (terlalu generik)
+- "مثال:"     (terlalu generik)
+- "الحكم:"    (terlalu generik)
+- "السبب:"    (terlalu generik)
+
+---
+
+## PERATURAN BULLET POINTS
+
+Guna "bullets": [] apabila:
+- 3+ item senarai yang berkait rapat
+- Syarat / rukun / taqsim
+- Item pendek (< 15 patah perkataan setiap satu)
+
+Guna "children": [] apabila:
+- Item ada sub-huraian sendiri
+- Khilaf ulama
+- Item > 15 patah perkataan
+
+⚠️ Nod yang ada "bullets" TIDAK boleh ada "children" — pilih satu.
+
+Contoh bullets:
+{
+  "id": "b1a1",
+  "label": "شروط الطهارة:",
+  "source": "matan",
+  "type": "syarat",
+  "color": "#1a3a5c",
+  "bullets": [
+    "الشرط الأول: النية",
+    "الشرط الثاني: استعمال الماء الطهور",
+    "الشرط الثالث: إزالة ما يمنع وصول الماء"
+  ]
+}
+
+---
+
+## PERATURAN ID
+
+Format:
+- Root     : "root"
+- Level 1  : "b1", "b2", "b3"
+- Level 2  : "b1a", "b1b", "b2a"
+- Level 3  : "b1a1", "b1a2", "b1b1"
+- Level 4  : "b1a1a", "b1a1b"
+- Level 5+ : "b1a1a1", "b1a1a2"
+
+ID WAJIB unik. Tiada dua nod boleh ada ID yang sama.
+
+---
+
+## PERATURAN SIDE & THEME
+
+- Cabang ganjil (1,3,5,7...): "side":"R", "theme":"b1"/"b3"/"b5"/"b7"
+- Cabang genap (2,4,6,8...): "side":"L", "theme":"b2"/"b4"/"b6"/"b8"
+- Melebihi b8: loop semula dari b1
+- Sub-nod TIDAK perlu "side" dan "theme"
+
+---
+
+## PERATURAN LABEL
+
+- Level 1: WAJIB nombor Arab — "١. عنوان"
+- Level 2: WAJIB nombor Arab — "١.١ عنوان"
+- Level 3 ke bawah: teks sahaja
+- Leaf node: teks huraian sebenar, maks 15-20 patah perkataan
+
+---
+
+## CHECKLIST SELF-REFLECTION SEBELUM OUTPUT
+
+Sebelum output JSON, semak:
+
+✓ Semua nod ada "source" (matan/syarah/hasyiah/footnote)?
+✓ Semua nod ada "type" dari senarai yang dibenarkan?
+✓ Root ada "meta" dengan semua fields?
+✓ Semua ID unik?
+✓ Tiada nod ada "bullets" DAN "children" serentak?
+✓ Semua khilaf ulama menggunakan struktur "khilaf" yang betul?
+✓ Semua nota kaki substantif diekstrak?
+✓ Adakah ada teks dari dokumen asal yang tertinggal?
+
+---
+
+## ICON YANG BOLEH DIGUNAKAN
+
+📖 = kitab/bab utama
+📌 = tajuk/topik
+⚖️ = hukum/fiqh
+✅ = syarat/rukun
+🚫 = larangan/pengecualian
+💡 = hikmah/faedah/misal
+📜 = dalil/hadith
+🔑 = definisi/takrif
+⭐ = penting
+⚔️ = khilaf/perbezaan pendapat
+📐 = kaedah
+⚠️ = tanbih/peringatan
+💬 = huraian
+✨ = faedah
+🔻 = footnote
+`;
+
+// ================================================================
+// UPLOAD PANEL LOGIC
+// ================================================================
+const uploadZone = document.getElementById('uploadZone');
+const fileInput  = document.getElementById('fileInput');
+
+uploadZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  uploadZone.classList.add('drag-over');
+});
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') handleFile(f);
+  else showErr('Sila drop fail PDF sahaja.');
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  currentFile = file;
+  document.getElementById('fcName').textContent = file.name;
+  document.getElementById('fcSize').textContent = (file.size/1024/1024).toFixed(2) + ' MB';
+  uploadZone.classList.add('hidden');
+  show('fileChip');
+  show('generateBtn');
+  hide('errBox');
+}
+
+function clearFile() {
+  currentFile = null;
+  fileInput.value = '';
+  uploadZone.classList.remove('hidden');
+  hide('fileChip');
+  hide('generateBtn');
+}
+
+function resetToUpload() {
+  // Hide mindmap, show upload panel
+  document.getElementById('hdr').style.display  = 'none';
+  document.getElementById('wrap').style.display = 'none';
+  document.getElementById('upload-panel').classList.remove('hidden');
+  clearFile();
+  kitabData = null;
+}
+
+// ── Progress helpers ──
+function setProgress(pct, label, step) {
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progPct').textContent  = pct + '%';
+  document.getElementById('progText').textContent = label;
+  if (step) document.getElementById('progStep').textContent = step;
+}
+
+// ── Error helpers ──
+function showErr(msg) {
+  const b = document.getElementById('errBox');
+  b.textContent = '⚠ ' + msg;
+  b.classList.remove('hidden');
+}
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ── PDF to base64 ──
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Fail baca gagal'));
+    r.readAsDataURL(file);
+  });
+}
+
+// ================================================================
+// MAIN: GENERATE MINDMAP
+// ================================================================
+async function generateMindmap() {
+  if (!currentFile) return;
+
+  hide('errBox');
+  document.getElementById('generateBtn').disabled = true;
+  show('progressWrap');
+  setProgress(5, 'Membaca PDF…', 'Menukar kepada base64');
+
+  let base64Data;
+  try {
+    base64Data = await fileToBase64(currentFile);
+  } catch(e) {
+    showErr('Gagal baca fail: ' + e.message);
+    hide('progressWrap');
+    document.getElementById('generateBtn').disabled = false;
+    return;
+  }
+
+  setProgress(20, 'Menghantar ke Claude AI…', 'Menganalisis struktur dokumen');
+
+  let parsed;
+  try {
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pdfBase64:    base64Data,
+        filename:     currentFile.name,
+        systemPrompt: SYSTEM_PROMPT
+      })
+    });
+
+    setProgress(70, 'Memproses respons Claude…', 'Mengekstrak struktur JSON');
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'API error ' + response.status);
+    }
+
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error || 'Unknown error');
+    parsed = result.data;
+
+  } catch(e) {
+    showErr('Ralat API: ' + e.message);
+    hide('progressWrap');
+    document.getElementById('generateBtn').disabled = false;
+    return;
+  }
+
+  setProgress(90, 'Merender peta minda…', 'Membina paparan visual');
+
+  // Switch panels
+  document.getElementById('upload-panel').classList.add('hidden');
+  document.getElementById('hdr').style.display  = 'flex';
+  document.getElementById('wrap').style.display = 'block';
+
+  // Render mindmap
+  kitabData = parsed;
+  mount();
+
+  setTimeout(() => {
+    const wrap = document.getElementById('wrap');
+    wrap.scrollLeft = (wrap.scrollWidth  - wrap.clientWidth)  / 2;
+    wrap.scrollTop  = (wrap.scrollHeight - wrap.clientHeight) / 2;
+    drawLines();
+    setTimeout(drawLines, 400);
+  }, 200);
+
+  setProgress(100, 'Selesai!', '');
+  setTimeout(() => hide('progressWrap'), 800);
+  document.getElementById('generateBtn').disabled = false;
+}
+
+// ================================================================
+// STEP 2 — RENDERER (v7.0 — Theme Gradient + Auto Contrast)
+// ================================================================
+const COLORS = {
+  b1:'#4878a0',b2:'#2d7a3a',b3:'#b87828',b4:'#986060',
+  b5:'#685898',b6:'#287878',b7:'#607830',b8:'#905038'
+};
+
+// Colour sepenuhnya dihandle oleh CSS classes .bX-Y
+// depth-1 = gelap + teks putih, depth 2-5 = pastel + teks hitam
+
+// Icon untuk content type
+const TYPE_ICONS = {
+  takrif:'🔑', takrif_lughawi:'🔑', takrif_istilahi:'🔑', takrif_syari:'🔑',
+  hukum:'⚖️', dalil:'📜', dalil_quran:'📜', dalil_hadith:'📜',
+  dalil_ijmak:'📜', dalil_qiyas:'📜',
+  syarat:'✅', rukun:'✅', pengecualian:'🚫',
+  khilaf:'⚔️', khilaf_qawl:'⚔️',
+  qaidah:'📐', tanbih:'⚠️', faedah:'✨', misal:'💡',
+  footnote:'🔻', huraian:'💬'
+};
+
+// SVG line colours
+const SOURCE_LINE_COLORS = {
+  matan:'#2d5a8a', syarah:'#2a7a40', hasyiah:'#b87828', footnote:'#c44444'
+};
+const SOURCE_DASH = { footnote:'4,3' };
+const TYPE_COLORS = SOURCE_LINE_COLORS;
+const TYPE_DASH   = SOURCE_DASH;
+
+function prepareBranches(data) {
+  (data.children || []).forEach((b, i) => {
+    b.side  = (i % 2 === 0) ? 'R' : 'L';
+    b.theme = 'b' + ((i % 8) + 1);
+  });
+}
+
+function resolveSource(node, parentSource) {
+  return node.source || parentSource || '';
+}
+function resolveType(node, parentType) {
+  return node.type || parentType || '';
+}
+
+
+function buildRow(node, side, depth, theme, parentType, parentSource) {
+  const nodeSource = resolveSource(node, parentSource);
+  const nodeType   = resolveType(node, parentType);
+  const isLeaf     = !node.children || node.children.length === 0;
+  const hasBullets = isLeaf && Array.isArray(node.bullets) && node.bullets.length > 0;
+
+  const row = document.createElement('div');
+  row.className      = `nr ${side}`;
+  row.dataset.id     = node.id;
+  row.dataset.type   = nodeType;
+  row.dataset.source = nodeSource;
+  row.dataset.theme  = theme;
+
+  const nb = document.createElement('div');
+  const lv = Math.min(depth, 5);
+  // CSS class .bX-Y handles background + text colour + border — no inline override needed
+  nb.className = `nb ${theme}-${lv}${isLeaf ? ' lf' : ''}${hasBullets ? ' has-bullets' : ''}`;
+
+  // Footnote: dashed border only
+  if (nodeSource === 'footnote') nb.style.borderStyle = 'dashed';
+
+  nb.dataset.nid    = node.id;
+  nb.dataset.type   = nodeType;
+  nb.dataset.source = nodeSource;
+  nb.dir = 'rtl';
+
+  // FIX ISU 4 — icon emoji je, buang badge label Arabic
+  const iconChar = node.icon || TYPE_ICONS[nodeType] || '';
+  const ic  = iconChar ? `<span style="font-size:0.85em;opacity:0.85">${iconChar}</span>` : '';
+  const ar  = isLeaf   ? '' : `<span class="arr">▾</span>`;
+
+  if (hasBullets) {
+    const bulletHtml = node.bullets.map(b => `<li>${b}</li>`).join('');
+    nb.innerHTML = `<div class="nb-title">${ic}<span>${node.label}</span></div><ul class="blist">${bulletHtml}</ul>`;
+  } else {
+    nb.innerHTML = `${ic}<span>${node.label}</span>${ar}`;
+  }
+
+  row.appendChild(nb);
+
+  if (!isLeaf) {
+    const gw = depth <= 2 ? 20 : depth === 3 ? 14 : 10;
+    const gp = document.createElement('div');
+    gp.style.cssText = `width:${gw}px;flex-shrink:0;`;
+    row.appendChild(gp);
+
+    const col = document.createElement('div');
+    col.className = 'chc';
+    col.id = 'c_' + node.id;
+    node.children.forEach(ch =>
+      col.appendChild(buildRow(ch, side, depth + 1, theme, nodeType, nodeSource))
+    );
+    row.appendChild(col);
+
+    nb.addEventListener('click', e => {
+      e.stopPropagation();
+      row.classList.toggle('collapsed');
+      col.classList.toggle('hidden');
+      sched(80);
+    });
+  }
+  return row;
+}
+
+function mount() {
+  prepareBranches(kitabData);
+  const meta = kitabData.meta || {};
+  const subText = meta.author
+    ? `${meta.author}${meta.mazhab ? ' · ' + meta.mazhab : ''}`
+    : (kitabData.sub || '');
+  document.getElementById('root-label').textContent = kitabData.label;
+  document.getElementById('root-sub').textContent   = subText;
+  document.getElementById('root-icon').textContent  = kitabData.icon || '📖';
+  document.getElementById('hdr-title').textContent  = kitabData.label;
+  document.getElementById('hdr-sub').textContent    = subText;
+  document.title = kitabData.label + ' — خريطة ذهنية';
+  const cr = document.getElementById('cr');
+  const cl = document.getElementById('cl');
+  cr.innerHTML = cl.innerHTML = '';
+  kitabData.children.forEach(b =>
+    (b.side === 'R' ? cr : cl)
+      .appendChild(buildRow(b, b.side, 1, b.theme, b.type || '', b.source || ''))
+  );
+}
+
+// ================================================================
+// STEP 3 — FILTER BY SOURCE + TYPE (subtree-aware)
+// ================================================================
+let activeFilter = 'all';
+
+// FIX ISU 3 — collect all descendant .nr rows untuk subtree highlight
+function getSubtreeRows(row) {
+  const result = [row];
+  const chc = row.querySelector('.chc');
+  if (!chc) return result;
+  chc.querySelectorAll('.nr').forEach(r => result.push(r));
+  return result;
+}
+
+function filterType(type) {
+  activeFilter = type;
+  document.querySelectorAll('[id^="f-"]').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('f-' + type);
+  if (btn) btn.classList.add('active');
+
+  if (type === 'all') {
+    // Reset semua
+    document.querySelectorAll('.nb').forEach(nb => {
+      nb.classList.remove('dimmed','highlighted');
+    });
+  } else {
+    // Dulu dim semua
+    document.querySelectorAll('.nb').forEach(nb => {
+      nb.classList.remove('highlighted');
+      nb.classList.add('dimmed');
+    });
+
+    // Cari matching rows — match pada source ATAU type
+    document.querySelectorAll('.nr').forEach(row => {
+      const nb  = row.querySelector(`.nb[data-nid="${row.dataset.id}"]`);
+      if (!nb) return;
+      const src = nb.dataset.source || '';
+      const t   = nb.dataset.type   || '';
+      // Also match subtypes — e.g. "takrif" matches "takrif_lughawi"
+      const match = src === type || t === type || t.startsWith(type + '_');
+      if (match) {
+        // Highlight seluruh subtree
+        getSubtreeRows(row).forEach(r => {
+          const rNb = r.querySelector('.nb');
+          if (rNb) {
+            rNb.classList.remove('dimmed');
+            rNb.classList.add('highlighted');
+          }
+        });
+        // Highlight semua ancestor supaya path nampak
+        let parent = row.closest('.chc');
+        while (parent) {
+          const ancestorRow = parent.closest('.nr');
+          if (!ancestorRow) break;
+          const aNb = ancestorRow.querySelector(`.nb[data-nid="${ancestorRow.dataset.id}"]`);
+          if (aNb) { aNb.classList.remove('dimmed'); }
+          parent = ancestorRow.closest('.chc');
+        }
+      }
+    });
+  }
+
+  // Root node never dimmed
+  const cn = document.getElementById('cn');
+  if (cn) cn.style.opacity = '1';
+}
+
+// ================================================================
+// STEP 4 — SVG LINE ENGINE
+// ================================================================
+function getPos(el, canvas) {
+  let ox = 0, oy = 0, cur = el;
+  while (cur && cur !== canvas) {
+    ox += cur.offsetLeft; oy += cur.offsetTop; cur = cur.offsetParent;
+  }
+  return { l:ox, r:ox+el.offsetWidth, mY:oy+el.offsetHeight/2 };
+}
+
+function drawLines() {
+  const svg    = document.getElementById('svg');
+  const canvas = document.getElementById('canvas');
+  svg.querySelectorAll('path').forEach(p => p.remove());
+  svg.setAttribute('width',   canvas.offsetWidth);
+  svg.setAttribute('height',  canvas.offsetHeight);
+  svg.setAttribute('viewBox', `0 0 ${canvas.offsetWidth} ${canvas.offsetHeight}`);
+
+  // Rebuild markers — source colors + theme colors
+  const defs = document.getElementById('defs');
+  defs.innerHTML = '';
+
+  const allColors = {...COLORS};
+  // Source line colours → markers with 'ms_' prefix
+  Object.entries(SOURCE_LINE_COLORS).forEach(([k,v]) => allColors['s_'+k] = v);
+  // Type line colours → markers with 'mt_' prefix (backward compat)
+  Object.entries(TYPE_COLORS).forEach(([k,v]) => allColors['t_'+k] = v);
+
+  Object.entries(allColors).forEach(([id, col]) => {
+    const m = document.createElementNS('http://www.w3.org/2000/svg','marker');
+    m.setAttribute('id',          `m${id}`);
+    m.setAttribute('markerWidth', '7');
+    m.setAttribute('markerHeight','5');
+    m.setAttribute('refX',        '6');
+    m.setAttribute('refY',        '2.5');
+    m.setAttribute('orient',      'auto');
+    const p = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    p.setAttribute('points', '0 0, 7 2.5, 0 5');
+    p.setAttribute('fill',    col);
+    p.setAttribute('opacity', '0.8');
+    m.appendChild(p);
+    defs.appendChild(m);
+  });
+
+  function conn(fEl, tEl, side, bid, depth, nodeSource, nodeType) {
+    const f   = getPos(fEl, canvas);
+    const t   = getPos(tEl, canvas);
+
+    // Guna source untuk warna garisan (bukan type)
+    const col      = SOURCE_LINE_COLORS[nodeSource]
+                     || TYPE_COLORS[nodeType]
+                     || (COLORS[bid] || '#888');
+    const markerId = SOURCE_LINE_COLORS[nodeSource]
+                     ? `ms_${nodeSource}`
+                     : (TYPE_COLORS[nodeType] ? `mt_${nodeType}` : `m${bid}`);
+
+    const sX = side === 'R' ? f.l : f.r;
+    const tX = side === 'R' ? t.r : t.l;
+    const sY = f.mY, tY = t.mY;
+
+    // FIX GARISAN SERABUT:
+    // 1. Adaptive dx — based on BOTH horizontal AND vertical distance
+    //    Bila nod jauh menegak, curve lebih lebar (tak overlap)
+    //    Bila nod dekat menegak, curve lebih ketat
+    const hDist  = Math.abs(tX - sX);
+    const vDist  = Math.abs(tY - sY);
+    const spread = Math.max(hDist * 0.4, Math.min(vDist * 0.5, hDist * 0.7));
+    const cp1x   = side === 'R' ? sX - spread : sX + spread;
+    const cp2x   = side === 'R' ? tX + spread * 0.6 : tX - spread * 0.6;
+
+    const sw   = depth <= 1 ? 1.8 : depth <= 2 ? 1.3 : 1.0;
+    const op   = depth <= 1 ? 0.72 : depth <= 2 ? 0.58 : 0.45;
+    const dash = SOURCE_DASH[nodeSource] || TYPE_DASH[nodeType] || null;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',
+      `M${sX},${sY} C${cp1x},${sY} ${cp2x},${tY} ${tX},${tY}`);
+    path.setAttribute('fill',           'none');
+    path.setAttribute('stroke',         col);
+    path.setAttribute('stroke-width',   sw);
+    path.setAttribute('stroke-opacity', op);
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin','round');
+    if (dash) path.setAttribute('stroke-dasharray', dash);
+    path.setAttribute('marker-end', `url(#${markerId})`);
+    svg.appendChild(path);
+  }
+
+  const cnd = document.getElementById('cn');
+
+  kitabData.children.forEach(b => {
+    const br = document.querySelector(`[data-id="${b.id}"]`);
+    if (!br) return;
+    const bb = br.querySelector('.nb');
+    if (!bb) return;
+    conn(cnd, bb, b.side, b.theme, 0, b.source || '', b.type || '');
+    if (!br.classList.contains('collapsed')) walk(b, b.side, b.theme, 1, b.type||'', b.source||'');
+  });
+
+  function walk(node, side, th, d, parentType, parentSource) {
+    if (!node.children) return;
+    const pr = document.querySelector(`[data-id="${node.id}"]`);
+    if (!pr || pr.classList.contains('collapsed')) return;
+    const pb = pr.querySelector(`.nb[data-nid="${node.id}"]`);
+    if (!pb) return;
+    node.children.forEach(ch => {
+      const cr2 = document.querySelector(`[data-id="${ch.id}"]`);
+      if (!cr2) return;
+      const cb = cr2.querySelector('.nb');
+      if (!cb) return;
+      const chSource = ch.source || parentSource;
+      const chType   = resolveType(ch, parentType);
+      conn(pb, cb, side, th, d, chSource, chType);
+      if (!cr2.classList.contains('collapsed')) walk(ch, side, th, d+1, chType, chSource);
+    });
+  }
+}
+
+// ================================================================
+// STEP 5 — PANNING
+// ================================================================
+(function(){
+  const wrap = document.getElementById('wrap');
+  let on=false,sx,sy,sl,st;
+  wrap.addEventListener('mousedown', e=>{
+    if(e.target.closest('.nb')) return;
+    on=true; sx=e.pageX; sy=e.pageY;
+    sl=wrap.scrollLeft; st=wrap.scrollTop;
+    wrap.classList.add('panning');
+  });
+  window.addEventListener('mouseup',  ()=>{ on=false; wrap.classList.remove('panning'); });
+  window.addEventListener('mousemove',e=>{
+    if(!on) return;
+    wrap.scrollLeft = sl-(e.pageX-sx);
+    wrap.scrollTop  = st-(e.pageY-sy);
+  });
+  wrap.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1) return;
+    on=true; sx=e.touches[0].pageX; sy=e.touches[0].pageY;
+    sl=wrap.scrollLeft; st=wrap.scrollTop;
+  },{passive:true});
+  wrap.addEventListener('touchmove',e=>{
+    if(!on||e.touches.length!==1) return;
+    wrap.scrollLeft=sl-(e.touches[0].pageX-sx);
+    wrap.scrollTop =st-(e.touches[0].pageY-sy);
+  },{passive:true});
+  wrap.addEventListener('touchend',()=>{ on=false; });
+})();
+
+// ================================================================
+// STEP 6 — TOOLBAR
+// ================================================================
+document.getElementById('btn-expand').addEventListener('click',()=>{
+  document.querySelectorAll('.nr.collapsed').forEach(r=>r.classList.remove('collapsed'));
+  document.querySelectorAll('.chc.hidden').forEach(c=>c.classList.remove('hidden'));
+  sched(80);
+});
+document.getElementById('btn-collapse').addEventListener('click',()=>{
+  kitabData.children.forEach(b=>{
+    const row=document.querySelector(`[data-id="${b.id}"]`);
+    if(!row) return;
+    row.classList.add('collapsed');
+    const col=document.getElementById('c_'+b.id);
+    if(col) col.classList.add('hidden');
+  });
+  sched(80);
+});
+
+// ================================================================
+// BOOT
+// ================================================================
+let rt=null;
+function sched(ms=300){ clearTimeout(rt); rt=setTimeout(drawLines,ms); }
+window.addEventListener('resize',()=>sched(200));
+
+window.addEventListener('load',()=>{
+  mount();
+  setTimeout(()=>{
+    const wrap=document.getElementById('wrap');
+    wrap.scrollLeft=(wrap.scrollWidth -wrap.clientWidth) /2;
+    wrap.scrollTop =(wrap.scrollHeight-wrap.clientHeight)/2;
+    drawLines();
+    setTimeout(drawLines,400);
+  },200);
+});
+
+// ================================================================
+// TOOLBAR BUTTONS
+// ================================================================
+document.getElementById('btn-expand').addEventListener('click',()=>{
+  document.querySelectorAll('.nr.collapsed').forEach(r=>r.classList.remove('collapsed'));
+  document.querySelectorAll('.chc.hidden').forEach(c=>c.classList.remove('hidden'));
+  sched(80);
+});
+document.getElementById('btn-collapse').addEventListener('click',()=>{
+  if (!kitabData) return;
+  kitabData.children.forEach(b=>{
+    const row=document.querySelector(`[data-id="${b.id}"]`);
+    if(!row) return;
+    row.classList.add('collapsed');
+    const col=document.getElementById('c_'+b.id);
+    if(col) col.classList.add('hidden');
+  });
+  sched(80);
+});
+</script>
+</body>
+</html>
