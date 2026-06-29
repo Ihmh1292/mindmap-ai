@@ -391,7 +391,44 @@ body{background:#FAFAF8;font-family:'Cairo',sans-serif;overflow:hidden;
   content:'•';position:absolute;right:2px;top:1px;
   font-size:0.65rem;opacity:0.55;
 }
-
+.page-range {
+  width:100%; max-width:520px;
+  background:white; border:1px solid #dde8f0;
+  border-radius:10px; padding:16px 20px;
+  font-family:'Cairo',sans-serif;
+}
+.pr-label {
+  font-size:0.82rem; font-weight:700;
+  color:#1a3550; margin-bottom:12px;
+  text-align:center;
+}
+.pr-inputs {
+  display:flex; align-items:center;
+  justify-content:center; gap:12px;
+}
+.pr-group {
+  display:flex; flex-direction:column;
+  align-items:center; gap:4px;
+}
+.pr-group label {
+  font-size:0.72rem; color:#888;
+}
+.pr-group input {
+  width:72px; text-align:center;
+  border:1.5px solid #a8cce8; border-radius:7px;
+  padding:8px; font-size:1rem; font-weight:700;
+  color:#1a3550; font-family:'Cairo',sans-serif;
+  outline:none;
+}
+.pr-group input:focus { border-color:#2d5a8a; }
+.pr-sep {
+  font-size:1.2rem; color:#aaa;
+  margin-top:16px;
+}
+.pr-hint {
+  margin-top:10px; text-align:center;
+  font-size:0.7rem; color:#aaa;
+}
 </style>
 </head>
 <body>
@@ -424,9 +461,25 @@ body{background:#FAFAF8;font-family:'Cairo',sans-serif;overflow:hidden;
     <button class="fc-rm" onclick="clearFile()" title="Remove">✕</button>
   </div>
 
-  <button class="btn-generate hidden" id="generateBtn" onclick="generateMindmap()">
-    ✦ توليد الخريطة الذهنية
-  </button>
+<div class="page-range hidden" id="pageRange">
+  <div class="pr-label">نطاق الصفحات · Page Range</div>
+  <div class="pr-inputs">
+    <div class="pr-group">
+      <label>من · From</label>
+      <input type="number" id="pageFrom" value="1" min="1" max="999">
+    </div>
+    <div class="pr-sep">—</div>
+    <div class="pr-group">
+      <label>إلى · To</label>
+      <input type="number" id="pageTo" value="20" min="1" max="999">
+    </div>
+  </div>
+  <div class="pr-hint">Cadangan: 15-25 muka surat per extraction</div>
+</div>
+
+<button class="btn-generate hidden" id="generateBtn" onclick="generateMindmap()">
+  ✦ توليد الخريطة الذهنية
+</button>
 
   <div class="progress-wrap hidden" id="progressWrap">
     <div class="prog-label">
@@ -905,6 +958,7 @@ function handleFile(file) {
   document.getElementById('fcSize').textContent = (file.size/1024/1024).toFixed(2) + ' MB';
   uploadZone.classList.add('hidden');
   show('fileChip');
+  show('pageRange');
   show('generateBtn');
   hide('errBox');
 }
@@ -978,15 +1032,20 @@ async function generateMindmap() {
 
   let parsed;
   try {
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pdfBase64:    base64Data,
-        filename:     currentFile.name,
-        systemPrompt: SYSTEM_PROMPT
-      })
-    });
+const pageFrom = parseInt(document.getElementById('pageFrom').value) || 1;
+const pageTo   = parseInt(document.getElementById('pageTo').value)   || 20;
+
+const response = await fetch('/api/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    pdfBase64:    base64Data,
+    filename:     currentFile.name,
+    systemPrompt: SYSTEM_PROMPT,
+    pageFrom:     pageFrom,
+    pageTo:       pageTo
+  })
+});
 
     setProgress(70, 'Memproses respons Claude…', 'Mengekstrak struktur JSON');
 

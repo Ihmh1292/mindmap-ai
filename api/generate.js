@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { pdfBase64, filename, systemPrompt } = req.body;
+    const { pdfBase64, filename, systemPrompt, pageFrom, pageTo } = req.body;
 
     if (!pdfBase64) {
       return res.status(400).json({ error: 'No PDF data provided' });
@@ -42,8 +42,7 @@ module.exports = async function handler(req, res) {
             },
             {
   type: 'text',
-  text: `Nama fail: "${filename}". Ekstrak SATU BAB PERTAMA sahaja dari kitab ini. Jangan ekstrak keseluruhan kitab sekaligus.`
-}
+  text: `Nama fail: "${filename}". Ekstrak kandungan dari halaman ${pageFrom} hingga halaman ${pageTo} sahaja. Jangan ekstrak melebihi julat halaman yang ditetapkan.`}
           ]
         }
       ]
