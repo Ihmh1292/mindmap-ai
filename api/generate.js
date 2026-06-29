@@ -41,8 +41,9 @@ module.exports = async function handler(req, res) {
               }
             },
             {
-  type: 'text',
-  text: `Nama fail: "${filename}". Ekstrak kandungan dari halaman ${pageFrom} hingga halaman ${pageTo} sahaja. Jangan ekstrak melebihi julat halaman yang ditetapkan.`}
+              type: 'text',
+              text: `Nama fail: "${filename}". Ekstrak kandungan dari halaman ${pageFrom} hingga halaman ${pageTo} sahaja. Jangan ekstrak melebihi julat halaman yang ditetapkan.`
+            }
           ]
         }
       ]
@@ -53,46 +54,32 @@ module.exports = async function handler(req, res) {
       .map(b => b.text)
       .join('');
 
+    console.log('rawText length:', rawText.length);
+    console.log('rawText last 200:', rawText.slice(-200));
+
     let parsed;
-try {
-  const clean = rawText.replace(/```json|```/g, '').trim();
-  parsed = JSON.parse(clean);
-} catch (e) {
-  try {
-    let partial = rawText.replace(/```json|```/g, '').trim();
-    
-    // Kira berapa { dan } yang ada
-    let opens  = 0;
-    let closes = 0;
-    for (const ch of partial) {
-      if (ch === '{') opens++;
-      if (ch === '}') closes++;
+    try {
+      const clean = rawText.replace(/```json|```/g, '').trim();
+      parsed = JSON.parse(clean);
+    } catch (e) {
+      try {
+        let partial = rawText.replace(/```json|```/g, '').trim();
+        let lastValid = partial.lastIndexOf('}');
+        if (lastValid > 0) {
+          partial = partial.substring(0, lastValid + 1);
+        }
+        const opens  = (partial.match(/\{/g) || []).length;
+        const closes = (partial.match(/\}/g) || []).length;
+        const diff   = opens - closes;
+        for (let i = 0; i < diff; i++) partial += '}';
+        parsed = JSON.parse(partial);
+      } catch (e2) {
+        return res.status(422).json({
+          error: 'Claude did not return valid JSON',
+          raw: rawText.substring(0, 2000)
+        });
+      }
     }
-    
-    // Buang trailing incomplete string/array dulu
-    // Cari } terakhir yang valid
-    let lastValid = partial.lastIndexOf('}');
-    if (lastValid > 0) {
-      partial = partial.substring(0, lastValid + 1);
-    }
-    
-    // Recount selepas trim
-    opens  = (partial.match(/\{/g) || []).length;
-    closes = (partial.match(/\}/g) || []).length;
-    
-    // Close semua yang terbuka
-    const diff = opens - closes;
-    for (let i = 0; i < diff; i++) partial += '}';
-    
-    parsed = JSON.parse(partial);
-    
-  } catch (e2) {
-    return res.status(422).json({
-      error: 'Claude did not return valid JSON',
-      raw: rawText.substring(0, 2000)
-    });
-  }
-}
 
     return res.status(200).json({ success: true, data: parsed });
 
@@ -102,4 +89,4 @@ try {
       error: error.message || 'Internal server error'
     });
   }
-}
+};
