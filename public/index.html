@@ -1050,13 +1050,15 @@ const response = await fetch('/api/generate', {
     setProgress(70, 'Memproses respons Claude…', 'Mengekstrak struktur JSON');
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || 'API error ' + response.status);
-    }
+  const err = await response.json().catch(() => ({}));
+  throw new Error(err.error || 'API error ' + response.status);
+}
 
-    const result = await response.json();
-    if (!result.success) throw new Error(result.error || 'Unknown error');
-    parsed = result.data;
+const result = await response.json();
+if (!result.success) {
+  // Tunjuk raw response untuk diagnosis
+  throw new Error(result.error + '\n\nRAW: ' + (result.raw || 'tiada'));
+}
 
   } catch(e) {
     showErr('Ralat API: ' + e.message);

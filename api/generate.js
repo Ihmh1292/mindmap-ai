@@ -76,9 +76,9 @@ try {
     }
   } catch (e2) {
     return res.status(422).json({
-      error: 'Claude did not return valid JSON',
-      raw: rawText.substring(0, 500)
-    });
+  error: 'Claude did not return valid JSON',
+  raw: rawText.substring(0, 2000)
+});
   }
 }
 
