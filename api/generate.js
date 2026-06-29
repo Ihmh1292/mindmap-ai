@@ -58,28 +58,34 @@ module.exports = async function handler(req, res) {
     console.log('rawText last 200:', rawText.slice(-200));
 
     let parsed;
+try {
+  // Strip markdown backticks if any
+  const clean = rawText
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+  parsed = JSON.parse(clean);
+} catch (e) {
+  // Cuba extract JSON object dari teks
+  const match = rawText.match(/\{[\s\S]*\}/);
+  if (match) {
     try {
-      const clean = rawText.replace(/```json|```/g, '').trim();
-      parsed = JSON.parse(clean);
-    } catch (e) {
-      try {
-        let partial = rawText.replace(/```json|```/g, '').trim();
-        let lastValid = partial.lastIndexOf('}');
-        if (lastValid > 0) {
-          partial = partial.substring(0, lastValid + 1);
-        }
-        const opens  = (partial.match(/\{/g) || []).length;
-        const closes = (partial.match(/\}/g) || []).length;
-        const diff   = opens - closes;
-        for (let i = 0; i < diff; i++) partial += '}';
-        parsed = JSON.parse(partial);
-      } catch (e2) {
-        return res.status(422).json({
-          error: 'Claude did not return valid JSON',
-          raw: rawText.substring(0, 2000)
-        });
-      }
+      parsed = JSON.parse(match[0]);
+    } catch (e2) {
+      return res.status(422).json({
+        error: 'Claude did not return valid JSON',
+        raw: rawText.substring(0, 500),
+        parseError: e2.message
+      });
     }
+  } else {
+    return res.status(422).json({
+      error: 'No JSON found in response',
+      raw: rawText.substring(0, 500)
+    });
+  }
+}
 
     return res.status(200).json({ success: true, data: parsed });
 
