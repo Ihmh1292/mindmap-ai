@@ -1075,7 +1075,13 @@ if (!result.success) {
   document.getElementById('wrap').style.display = 'block';
 
   // Render mindmap
-  kitabData = parsed;
+  if (!parsed || typeof parsed !== 'object') {
+  showErr('JSON tidak valid — Cuba semula');
+  hide('progressWrap');
+  document.getElementById('generateBtn').disabled = false;
+  return;
+}
+kitabData = parsed;
 console.log('JSON structure:', JSON.stringify(kitabData).substring(0, 500));
 if (!kitabData.children) kitabData.children = [];
 mount();
