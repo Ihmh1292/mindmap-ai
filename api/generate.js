@@ -55,20 +55,33 @@ module.exports = async function handler(req, res) {
       .join('');
 
     let parsed;
-    try {
-      const clean = rawText.replace(/```json|```/g, '').trim();
-      parsed = JSON.parse(clean);
-    } catch (e) {
-      const match = rawText.match(/\{[\s\S]*\}/);
-      if (match) {
-        parsed = JSON.parse(match[0]);
-      } else {
-        return res.status(422).json({
-          error: 'Claude did not return valid JSON',
-          raw: rawText.substring(0, 500)
-        });
-      }
+try {
+  const clean = rawText.replace(/```json|```/g, '').trim();
+  parsed = JSON.parse(clean);
+} catch (e) {
+  // Cuba repair JSON yang truncated
+  try {
+    let partial = rawText.replace(/```json|```/g, '').trim();
+    // Buang trailing incomplete content
+    const lastBrace = partial.lastIndexOf('}');
+    if (lastBrace > 0) {
+      partial = partial.substring(0, lastBrace + 1);
+      // Cuba close semua brackets yang terbuka
+      const opens  = (partial.match(/\{/g) || []).length;
+      const closes = (partial.match(/\}/g) || []).length;
+      const diff   = opens - closes;
+      for (let i = 0; i < diff; i++) partial += '}';
+      parsed = JSON.parse(partial);
+    } else {
+      throw new Error('No valid JSON found');
     }
+  } catch (e2) {
+    return res.status(422).json({
+      error: 'Claude did not return valid JSON',
+      raw: rawText.substring(0, 500)
+    });
+  }
+}
 
     return res.status(200).json({ success: true, data: parsed });
 
