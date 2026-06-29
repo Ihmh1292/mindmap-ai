@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 32000,
+      max_tokens: 8000,
       system: systemPrompt,
       messages: [
         {
@@ -41,9 +41,9 @@ module.exports = async function handler(req, res) {
               }
             },
             {
-              type: 'text',
-              text: `Nama fail: "${filename}". Ekstrak kandungan kitab ini mengikut arahan system prompt.`
-            }
+  type: 'text',
+  text: `Nama fail: "${filename}". Ekstrak SATU BAB PERTAMA sahaja dari kitab ini. Jangan ekstrak keseluruhan kitab sekaligus.`
+}
           ]
         }
       ]
