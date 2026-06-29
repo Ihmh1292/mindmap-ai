@@ -1076,7 +1076,9 @@ if (!result.success) {
 
   // Render mindmap
   kitabData = parsed;
-  mount();
+console.log('JSON structure:', JSON.stringify(kitabData).substring(0, 500));
+if (!kitabData.children) kitabData.children = [];
+mount();
 
   setTimeout(() => {
     const wrap = document.getElementById('wrap');
@@ -1465,14 +1467,16 @@ function sched(ms=300){ clearTimeout(rt); rt=setTimeout(drawLines,ms); }
 window.addEventListener('resize',()=>sched(200));
 
 window.addEventListener('load',()=>{
-  mount();
-  setTimeout(()=>{
-    const wrap=document.getElementById('wrap');
-    wrap.scrollLeft=(wrap.scrollWidth -wrap.clientWidth) /2;
-    wrap.scrollTop =(wrap.scrollHeight-wrap.clientHeight)/2;
-    drawLines();
-    setTimeout(drawLines,400);
-  },200);
+  if (kitabData) {
+    mount();
+    setTimeout(()=>{
+      const wrap=document.getElementById('wrap');
+      wrap.scrollLeft=(wrap.scrollWidth -wrap.clientWidth) /2;
+      wrap.scrollTop =(wrap.scrollHeight-wrap.clientHeight)/2;
+      drawLines();
+      setTimeout(drawLines,400);
+    },200);
+  }
 });
 
 // ================================================================
